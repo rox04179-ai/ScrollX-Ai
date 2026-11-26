@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#090b12">
+<title>ScrollX AI — Clip Studio</title>
+<style>
+:root{color-scheme:dark;--bg:#090b12;--panel:#121725;--line:#252e40;--muted:#9aa6bb;--white:#f4f7ff;--accent:#8b5cf6;--cyan:#38bdf8}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 80% -10%,#25204b 0,transparent 35%),var(--bg);color:var(--white);font:15px/1.5 Inter,system-ui,Arial,sans-serif}
+.wrap{max-width:1050px;margin:auto;padding:22px 16px 50px}.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:28px}.brand{font-weight:850;font-size:23px;letter-spacing:-.7px}.brand span{color:#a78bfa}.pill{border:1px solid #3c315e;color:#c4b5fd;border-radius:99px;padding:5px 10px;font-size:12px}
+h1{font-size:clamp(30px,6vw,52px);line-height:1.04;letter-spacing:-1.8px;margin:8px 0 12px}h1 em{font-style:normal;color:#a78bfa}.sub{color:var(--muted);max-width:650px;margin:0 0 24px}
+.grid{display:grid;grid-template-columns:1fr;gap:16px}.panel{background:linear-gradient(145deg,#151c2c,#101522);border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:0 14px 45px #0003}.panel h2{font-size:17px;margin:0 0 12px}
+.drop{border:1.5px dashed #4b5270;border-radius:14px;padding:28px 16px;text-align:center;background:#0d1320;cursor:pointer}.drop strong{display:block;font-size:17px;margin:7px}.drop small,.hint{color:var(--muted)}input[type=file]{display:none}
+button,.btn{border:0;border-radius:11px;padding:11px 15px;background:linear-gradient(110deg,#8b5cf6,#6366f1);color:white;font-weight:750;cursor:pointer}button:disabled{opacity:.45;cursor:not-allowed}.secondary{background:#202a3d;border:1px solid #344057}.controls{display:flex;flex-wrap:wrap;gap:9px;margin-top:14px}
+video{width:100%;max-height:460px;background:#05070b;border-radius:12px;margin-top:14px}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.field label{display:block;color:var(--muted);font-size:12px;margin-bottom:5px}.field input{width:100%;background:#0b111d;border:1px solid #344057;color:white;padding:11px;border-radius:9px}
+.status{margin-top:12px;color:#c4b5fd;font-size:13px;min-height:20px}.clip{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}.clip b{font-size:14px}.clip small{display:block;color:var(--muted)}.note{font-size:12px;color:var(--muted);margin-top:14px}.footer{color:#64748b;text-align:center;font-size:12px;margin-top:25px}
+@media(min-width:760px){.grid{grid-template-columns:1.15fr .85fr}.span{grid-column:1/-1}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top"><div class="brand">SCROLL<span>X</span> <span style="color:#e2e8f0;font-weight:500">AI</span></div><div class="pill">EARLY MVP · BETA</div></header>
+  <h1>Turn long videos into<br><em>short-form moments.</em></h1>
+  <p class="sub">A mobile-friendly clip studio. Upload a video, preview it, mark a moment and build a clip list. This first version runs in your browser.</p>
+  <main class="grid">
+    <section class="panel">
+      <h2>01 / Add your video</h2>
+      <label class="drop" for="videoFile"><div style="font-size:30px">＋</div><strong>Tap to choose a video</strong><small>MP4, MOV or WebM · processed locally in this demo</small></label>
+      <input id="videoFile" type="file" accept="video/*">
+      <video id="player" controls playsinline hidden></video>
+      <div class="status" id="videoStatus">No video selected yet.</div>
+    </section>
+    <section class="panel">
+      <h2>02 / Mark a clip</h2>
+      <div class="fields">
+        <div class="field"><label for="start">Start (seconds)</label><input id="start" type="number" min="0" step=".1" value="0"></div>
+        <div class="field"><label for="end">End (seconds)</label><input id="end" type="number" min="0" step=".1" value="20"></div>
+      </div>
+      <div class="controls"><button id="useTime" class="secondary" disabled>Use current time as start</button><button id="addClip" disabled>Add clip</button></div>
+      <p class="note">Tip: play the video, pause at the moment you want, then use the current-time button to set the start.</p>
+      <div class="status" id="clipStatus">Choose a video to begin.</div>
+    </section>
+    <section class="panel span">
+      <h2>03 / Your clip shortlist</h2>
+      <div id="clips"><p class="hint">Your marked moments will appear here.</p></div>
+      <div class="controls"><button id="downloadList" class="secondary" disabled>Download clip plan (.txt)</button><button id="clear" class="secondary" disabled>Clear list</button></div>
+      <p class="note">This MVP creates a timestamped edit plan; it does not yet render or export cropped video clips, detect viral moments automatically, or connect to YouTube.</p>
+    </section>
+  </main>
+  <div class="footer">SCROLLX AI · Build small. Ship carefully.</div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+let videoUrl=null, clips=[];
+const player=$('player'), file=$('videoFile');
+file.addEventListener('change',()=>{
+ const f=file.files?.[0]; if(!f)return;
+ if(videoUrl)URL.revokeObjectURL(videoUrl);
+ videoUrl=URL.createObjectURL(f);player.src=videoUrl;player.hidden=false;
+ $('videoStatus').textContent=`Loaded: ${f.name} · ${(f.size/1048576).toFixed(1)} MB`;
+ $('useTime').disabled=false;$('addClip').disabled=false;
+ $('end').value='20';$('clipStatus').textContent='Video ready. Play and mark a moment.';
+});
+$('useTime').addEventListener('click',()=>{$('start').value=player.currentTime.toFixed(1);$('clipStatus').textContent='Start time set from the player.';});
+$('addClip').addEventListener('click',()=>{
+ const s=Number($('start').value),e=Number($('end').value);
+ if(!player.duration||!Number.isFinite(s)||!Number.isFinite(e)||s<0||e<=s||e>player.duration){$('clipStatus').textContent='Check the times: end must be after start and within the video.';return;}
+ clips.push({start:s,end:e});render();$('clipStatus').textContent='Moment added to your shortlist.';
+});
+function stamp(n){const m=Math.floor(n/60),s=(n%60).toFixed(1).padStart(4,'0');return `${String(m).padStart(2,'0')}:${s}`;}
+function render(){
+ $('clips').innerHTML='';
+ if(!clips.length){$('clips').innerHTML='<p class="hint">Your marked moments will appear here.</p>';}
+ clips.forEach((c,i)=>{const d=document.createElement('div');d.className='clip';const info=document.createElement('div');const b=document.createElement('b');b.textContent=`Moment ${i+1}`;const sm=document.createElement('small');sm.textContent=`${stamp(c.start)} → ${stamp(c.end)} · ${(c.end-c.start).toFixed(1)} sec`;info.append(b,sm);const actions=document.createElement('div');const preview=document.createElement('button');preview.className='secondary';preview.textContent='Preview';preview.onclick=()=>{player.currentTime=c.start;player.play();};const del=document.createElement('button');del.className='secondary';del.textContent='Remove';del.onclick=()=>{clips.splice(i,1);render();};actions.append(preview,del);d.append(info,actions);$('clips').append(d);});
+ $('downloadList').disabled=!clips.length;$('clear').disabled=!clips.length;
+}
+$('clear').onclick=()=>{clips=[];render();};
+$('downloadList').onclick=()=>{const body=['SCROLLX AI — CLIP PLAN','',...clips.map((c,i)=>`Moment ${i+1}: ${stamp(c.start)} to ${stamp(c.end)} (${(c.end-c.start).toFixed(1)} sec)`)].join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([body],{type:'text/plain'}));a.download='scrollx-clip-plan.txt';a.click();URL.revokeObjectURL(a.href);};
+</script>
+</body>
+</html>
